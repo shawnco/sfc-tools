@@ -78,47 +78,88 @@
 		// remove existing controls if present
 		const existing = document.getElementById('sfc-paginator-controls');
 		if (existing) existing.remove();
+			const wrapper = document.createElement('div');
+			wrapper.id = 'sfc-paginator-controls';
+			wrapper.style.margin = '8px 0';
+			wrapper.style.fontFamily = 'sans-serif';
 
-		const wrapper = document.createElement('div');
-		wrapper.id = 'sfc-paginator-controls';
-		wrapper.style.margin = '8px 0';
-		wrapper.style.fontFamily = 'sans-serif';
+			const first = document.createElement('button');
+			first.textContent = '« First';
+			first.style.marginRight = '8px';
+			first.disabled = true;
 
-		const prev = document.createElement('button');
-		prev.textContent = '← Previous';
-		prev.style.marginRight = '8px';
-		prev.disabled = true;
+			const prev = document.createElement('button');
+			prev.textContent = '← Previous';
+			prev.style.marginRight = '8px';
+			prev.disabled = true;
 
-		const next = document.createElement('button');
-		next.textContent = 'Next →';
-		next.style.marginLeft = '8px';
+			const indicator = document.createElement('span');
+			indicator.style.margin = '0 8px';
+			indicator.textContent = `Page 1 of ${totalPages}`;
 
-		const indicator = document.createElement('span');
-		indicator.style.margin = '0 8px';
-		indicator.textContent = `Page 1 of ${totalPages}`;
+			// page selector dropdown
+			const select = document.createElement('select');
+			select.style.margin = '0 8px';
+			for (let i = 0; i < totalPages; i++) {
+				const opt = document.createElement('option');
+				opt.value = String(i + 1);
+				opt.textContent = `Page ${i + 1}`;
+				select.appendChild(opt);
+			}
 
-		let current = 0;
+			const next = document.createElement('button');
+			next.textContent = 'Next →';
+			next.style.marginLeft = '8px';
 
-		function updateButtons() {
-			prev.disabled = current <= 0;
-			next.disabled = current >= totalPages - 1;
-			indicator.textContent = `Page ${current + 1} of ${totalPages}`;
-			onPage(current);
-		}
+			const last = document.createElement('button');
+			last.textContent = 'Last »';
+			last.style.marginLeft = '8px';
 
-		prev.addEventListener('click', () => {
-			if (current > 0) { current--; updateButtons(); }
-		});
-		next.addEventListener('click', () => {
-			if (current < totalPages - 1) { current++; updateButtons(); }
-		});
+			let current = 0;
 
-		wrapper.appendChild(prev);
-		wrapper.appendChild(indicator);
-		wrapper.appendChild(next);
+			function scrollFirstVisible() {
+				setTimeout(() => {
+					const visiblePosts = Array.from(container.querySelectorAll('tr.post')).filter(tr => tr.style.display !== 'none');
+					if (visiblePosts.length) {
+						try { visiblePosts[0].scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { visiblePosts[0].scrollIntoView(); }
+					}
+				}, 50);
+			}
 
-		container.parentNode.insertBefore(wrapper, container);
-		return { setPage: (n) => { current = Math.max(0, Math.min(totalPages - 1, n)); updateButtons(); } };
+			function updateButtons() {
+				first.disabled = current <= 0;
+				prev.disabled = current <= 0;
+				next.disabled = current >= totalPages - 1;
+				last.disabled = current >= totalPages - 1;
+				indicator.textContent = `Page ${current + 1} of ${totalPages}`;
+				select.value = String(current + 1);
+				onPage(current);
+				// after showing the page, scroll to the first visible post on that page
+				scrollFirstVisible();
+			}
+
+			first.addEventListener('click', () => { if (current !== 0) { current = 0; updateButtons(); } });
+			prev.addEventListener('click', () => { if (current > 0) { current--; updateButtons(); } });
+			next.addEventListener('click', () => { if (current < totalPages - 1) { current++; updateButtons(); } });
+			last.addEventListener('click', () => { if (current !== totalPages - 1) { current = totalPages - 1; updateButtons(); } });
+
+			select.addEventListener('change', () => {
+				const val = parseInt(select.value, 10) - 1;
+				if (!Number.isNaN(val) && val >= 0 && val < totalPages) {
+					current = val;
+					updateButtons();
+				}
+			});
+
+			wrapper.appendChild(first);
+			wrapper.appendChild(prev);
+			wrapper.appendChild(indicator);
+			wrapper.appendChild(select);
+			wrapper.appendChild(next);
+			wrapper.appendChild(last);
+
+			container.parentNode.insertBefore(wrapper, container);
+			return { setPage: (n) => { current = Math.max(0, Math.min(totalPages - 1, n)); updateButtons(); } };
 	}
 
 	function paginate(postsTable) {
